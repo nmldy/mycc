@@ -1,0 +1,68 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]          # 打 v1.0 之类的 tag 时触发发布
+  workflow_dispatch:          # 允许在网页上手动点击运行
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile (Linux x86_64)
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -static \
+              -o mycc-linux-x86_64 mycc.cpp
+          ./mycc-linux-x86_64 --help || true   # 冒烟：能跑起来
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mycc-linux-x86_64
+          path: mycc-linux-x86_64
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      - name: Compile (Android aarch64)
+        run: |
+          NDK=$ANDROID_NDK_HOME
+          TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin
+          $TOOLCHAIN/aarch64-linux-android24-clang++ \
+              -std=c++17 -O2 -Wall -Wextra -static \
+              -o mycc-android-aarch64 mycc.cpp
+          file mycc-android-aarch64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mycc-android-aarch64
+          path: mycc-android-aarch64
+
+  release:
+    needs: [ build-linux, build-android ]
+    if: startsWith(github.ref, 'refs/tags/v')   # 只在打 tag 时发布
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            mycc-linux-x86_64
+            mycc-android-aarch64
