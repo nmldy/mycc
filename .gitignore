@@ -1,0 +1,18 @@
+# 构建产物
+mycc
+mycc.exe
+*.o
+*.a
+
+# mycc 自身的缓存
+.mycc/
+.mycc2/
+
+# 冒烟测试工作目录
+t/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
